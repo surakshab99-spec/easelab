@@ -3,6 +3,7 @@ import { Laboratory, Equipment, User } from '../types';
 import { EquipmentBookingModal } from './EquipmentBookingModal';
 import { X, Building2, Cpu, CheckCircle2, AlertTriangle, ArrowLeft, Calendar, Shield } from 'lucide-react';
 import { motion } from 'motion/react';
+import { apiFetch } from '../services/api';
 
 interface LaboratoryDetailsModalProps {
   laboratory: Laboratory;
@@ -18,7 +19,7 @@ export const LaboratoryDetailsModal: React.FC<LaboratoryDetailsModalProps> = ({ 
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
-    fetch('/api/equipment')
+    apiFetch('/api/equipment')
       .then(res => res.json())
       .then(data => {
         setEquipmentList(data.filter((e: Equipment) => e.labId === laboratory.id || e.labName.toLowerCase() === laboratory.name.toLowerCase()));
@@ -152,7 +153,7 @@ export const LaboratoryDetailsModal: React.FC<LaboratoryDetailsModalProps> = ({ 
               setSelectedEqForBooking(null);
               setSuccessMessage('Equipment reservation request submitted successfully!');
               // reload equipment
-              fetch('/api/equipment')
+              apiFetch('/api/equipment')
                 .then(res => res.json())
                 .then(data => {
                   setEquipmentList(data.filter((e: Equipment) => e.labId === laboratory.id || e.labName.toLowerCase() === laboratory.name.toLowerCase()));

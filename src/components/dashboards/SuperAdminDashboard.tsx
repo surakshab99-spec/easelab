@@ -3,6 +3,7 @@ import { User, Equipment, Laboratory, EquipmentBooking } from '../../types';
 import { SplineBlob } from '../SplineBlob';
 import { ShieldAlert, Users, Building2, Cpu, Calendar, LogOut } from 'lucide-react';
 import { motion } from 'motion/react';
+import { apiFetch } from '../../services/api';
 
 interface SuperAdminDashboardProps {
   user: User;
@@ -16,9 +17,9 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ user, 
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/equipment').then(res => res.json()),
-      fetch('/api/labs').then(res => res.json()),
-      fetch('/api/bookings').then(res => res.json())
+      apiFetch('/api/equipment').then(res => res.json()),
+      apiFetch('/api/labs').then(res => res.json()),
+      apiFetch('/api/bookings').then(res => res.json())
     ]).then(([eqData, labData, bkData]) => {
       setEquipment(eqData);
       setLabs(labData);

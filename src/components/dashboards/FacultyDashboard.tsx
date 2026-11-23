@@ -3,6 +3,7 @@ import { User, EquipmentBooking, Laboratory } from '../../types';
 import { SplineBlob } from '../SplineBlob';
 import { CheckCircle2, XCircle, Clock, Building2, LogOut, Award } from 'lucide-react';
 import { motion } from 'motion/react';
+import { apiFetch } from '../../services/api';
 
 interface FacultyDashboardProps {
   user: User;
@@ -15,8 +16,8 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ user, onLogo
 
   const loadData = () => {
     Promise.all([
-      fetch('/api/bookings').then(res => res.json()),
-      fetch('/api/labs').then(res => res.json())
+      apiFetch('/api/bookings').then(res => res.json()),
+      apiFetch('/api/labs').then(res => res.json())
     ]).then(([bkData, labData]) => {
       setBookings(bkData);
       setLabs(labData);
@@ -29,7 +30,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({ user, onLogo
 
   const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
     try {
-      await fetch(`/api/bookings/${id}`, {
+      await apiFetch(`/api/bookings/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })

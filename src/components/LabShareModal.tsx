@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { User, LabShareItem } from '../types';
 import { X, Share2, Search, Filter, Plus, Phone, Trash2, Edit2, CheckCircle2, AlertCircle, Package, User as UserIcon } from 'lucide-react';
 import { motion } from 'motion/react';
+import { apiFetch } from '../services/api';
 
 interface LabShareModalProps {
   user?: User | null;
@@ -40,7 +41,7 @@ export const LabShareModal: React.FC<LabShareModalProps> = ({ user, onClose, onR
   const [successMsg, setSuccessMsg] = useState('');
 
   const loadItems = () => {
-    fetch('/api/labshare/items')
+    apiFetch('/api/labshare/items')
       .then(res => res.json())
       .then(data => {
         setItems(data);
@@ -80,7 +81,7 @@ export const LabShareModal: React.FC<LabShareModalProps> = ({ user, onClose, onR
 
     try {
       if (editingItemId) {
-        const res = await fetch(`/api/labshare/items/${editingItemId}`, {
+        const res = await apiFetch(`/api/labshare/items/${editingItemId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -93,7 +94,7 @@ export const LabShareModal: React.FC<LabShareModalProps> = ({ user, onClose, onR
           loadItems();
         }
       } else {
-        const res = await fetch('/api/labshare/items', {
+        const res = await apiFetch('/api/labshare/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -135,7 +136,7 @@ export const LabShareModal: React.FC<LabShareModalProps> = ({ user, onClose, onR
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this listing?')) return;
     try {
-      await fetch(`/api/labshare/items/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/labshare/items/${id}`, { method: 'DELETE' });
       loadItems();
     } catch (err) {
       console.error(err);
@@ -145,7 +146,7 @@ export const LabShareModal: React.FC<LabShareModalProps> = ({ user, onClose, onR
   const handleToggleStatus = async (item: LabShareItem) => {
     const nextStatus = item.status === 'available' ? 'unavailable' : 'available';
     try {
-      await fetch(`/api/labshare/items/${item.id}/status`, {
+      await apiFetch(`/api/labshare/items/${item.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus })

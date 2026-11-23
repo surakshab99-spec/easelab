@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Equipment, User } from '../types';
 import { X, Calendar, Clock, AlertCircle, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
+import { apiFetch } from '../services/api';
 
 interface EquipmentBookingModalProps {
   equipment: Equipment;
@@ -52,7 +53,7 @@ export const EquipmentBookingModal: React.FC<EquipmentBookingModalProps> = ({ eq
 
     setLoading(true);
     try {
-      const res = await fetch('/api/bookings', {
+      const res = await apiFetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -69,11 +70,11 @@ export const EquipmentBookingModal: React.FC<EquipmentBookingModalProps> = ({ eq
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to submit booking request.');
+      if (!res.ok || !data?.success) throw new Error(data?.error || 'Failed to submit booking request.');
 
       onSuccess();
-    } catch (err: any) {
-      setError(err.message || 'Booking submission failed.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Booking submission failed.');
     } finally {
       setLoading(false);
     }

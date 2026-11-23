@@ -3,6 +3,7 @@ import { Laboratory, Department, User, Equipment } from '../types';
 import { LaboratoryDetailsModal } from './LaboratoryDetailsModal';
 import { X, Building2, Cpu, Search, Filter, ArrowRight, Shield } from 'lucide-react';
 import { motion } from 'motion/react';
+import { apiFetch } from '../services/api';
 
 interface ExploreLabsModalProps {
   user?: User | null;
@@ -22,8 +23,8 @@ export const ExploreLabsModal: React.FC<ExploreLabsModalProps> = ({ user, onClos
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/labs').then(res => res.json()),
-      fetch('/api/departments').then(res => res.json())
+      apiFetch('/api/labs').then(res => res.json()),
+      apiFetch('/api/departments').then(res => res.json())
     ]).then(([labsData, deptData]) => {
       setLabs(labsData);
       setDepartments(deptData);

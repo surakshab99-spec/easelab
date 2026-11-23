@@ -4,6 +4,7 @@ import { SplineBlob } from '../SplineBlob';
 import { ExploreLabsModal } from '../ExploreLabsModal';
 import { Cpu, Calendar, Clock, Sparkles, Send, CheckCircle2, AlertCircle, Plus, LogOut, Compass, Layers, Share2, HardDrive } from 'lucide-react';
 import { motion } from 'motion/react';
+import { apiFetch } from '../../services/api';
 
 interface StudentDashboardProps {
   user: User;
@@ -23,8 +24,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, onLogo
 
   const loadData = () => {
     Promise.all([
-      fetch('/api/equipment').then(res => res.json()),
-      fetch('/api/bookings').then(res => res.json())
+      apiFetch('/api/equipment').then(res => res.json()),
+      apiFetch('/api/bookings').then(res => res.json())
     ]).then(([eqData, bkData]) => {
       setEquipment(eqData);
       setBookings(bkData.filter((b: EquipmentBooking) => b.userId === user.id));
@@ -40,7 +41,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, onLogo
     if (!aiPrompt.trim()) return;
     setAiLoading(true);
     try {
-      const res = await fetch('/api/ai-assistant', {
+      const res = await apiFetch('/api/ai-assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: aiPrompt })
@@ -48,7 +49,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, onLogo
       const data = await res.json();
       setAiResponse(data.response);
     } catch (err) {
-      setAiResponse('AI service temporarily busy.');
+      setAiResponse(err instanceof Error ? err.message : 'AI service temporarily unavailable. Please try again.');
     } finally {
       setAiLoading(false);
       setAiPrompt('');

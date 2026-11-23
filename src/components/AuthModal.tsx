@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserRole, User } from '../types';
 import { Eye, EyeOff, ArrowLeft, Lock, Mail, User as UserIcon, Building, ShieldCheck, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
+import { apiFetch } from '../services/api';
 
 interface AuthModalProps {
   selectedRole: UserRole;
@@ -51,26 +52,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ selectedRole, onLoginSucce
           return;
         }
 
-        const res = await fetch('/api/auth/register', {
+        const res = await apiFetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ fullName, email, password, department, role: selectedRole, studentOrStaffId })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Registration failed');
+        if (!data?.user) throw new Error('Registration failed: the server returned no account details.');
         onLoginSuccess(data.user);
       } else {
-        const res = await fetch('/api/auth/login', {
+        const res = await apiFetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password, role: selectedRole })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Login failed');
+        if (!data?.user) throw new Error('Login failed: the server returned no account details.');
         onLoginSuccess(data.user);
       }
-    } catch (err: any) {
-      setError(err.message || 'Authentication error occurred.');
+    } catch (err) {
+      setError(err instanceof Error && err.message !== 'Failed to fetch'
+        ? err.message
+        : 'Unable to reach the authentication service. Check your connection and try again.');
     } finally {
       setLoading(false);
     }

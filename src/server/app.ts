@@ -1,6 +1,8 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import { Buffer } from 'node:buffer';
+import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
 dotenv.config();
 
@@ -19,12 +21,44 @@ const ai = apiKey
     })
   : null;
 
-// Users store
-let users = [
-  { id: 'usr-1', fullName: 'Alex Rivera', email: 'student@easelabs.edu', role: 'student', department: 'Computer Science and Engineering', studentOrStaffId: 'CSE-2026-889' },
-  { id: 'usr-2', fullName: 'Dr. Elena Vance', email: 'faculty@easelabs.edu', role: 'faculty', department: 'Electronics and Communication', studentOrStaffId: 'FAC-9012' },
-  { id: 'usr-3', fullName: 'Marcus Sterling', email: 'admin@easelabs.edu', role: 'lab_admin', department: 'Central Equipment Operations', studentOrStaffId: 'ADM-3341' },
-  { id: 'usr-4', fullName: 'Director Sophia Thorne', email: 'super@easelabs.edu', role: 'super_admin', department: 'Campus Executive Directorate', studentOrStaffId: 'DIR-0001' }
+type UserAccount = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  department: string;
+  studentOrStaffId: string;
+  passwordHash: string;
+};
+
+function hashPassword(password: string): string {
+  const salt = randomBytes(16);
+  const hash = scryptSync(password, salt, 64);
+  return `${salt.toString('hex')}:${hash.toString('hex')}`;
+}
+
+function verifyPassword(password: string, passwordHash: string): boolean {
+  const [saltHex, hashHex] = passwordHash.split(':');
+  if (!saltHex || !hashHex) return false;
+
+  const salt = Buffer.from(saltHex, 'hex');
+  const expectedHash = Buffer.from(hashHex, 'hex');
+  if (salt.length !== 16 || expectedHash.length !== 64) return false;
+
+  const actualHash = scryptSync(password, salt, expectedHash.length);
+  return timingSafeEqual(actualHash, expectedHash);
+}
+
+function publicUser({ passwordHash: _passwordHash, ...user }: UserAccount) {
+  return { ...user, token: randomBytes(32).toString('hex') };
+}
+
+// Seeded demo accounts use the password filled by the login helper.
+let users: UserAccount[] = [
+  { id: 'usr-1', fullName: 'Alex Rivera', email: 'student@easelabs.edu', role: 'student', department: 'Computer Science and Engineering', studentOrStaffId: 'CSE-2026-889', passwordHash: hashPassword('nexus2026') },
+  { id: 'usr-2', fullName: 'Dr. Elena Vance', email: 'faculty@easelabs.edu', role: 'faculty', department: 'Electronics and Communication', studentOrStaffId: 'FAC-9012', passwordHash: hashPassword('nexus2026') },
+  { id: 'usr-3', fullName: 'Marcus Sterling', email: 'admin@easelabs.edu', role: 'lab_admin', department: 'Central Equipment Operations', studentOrStaffId: 'ADM-3341', passwordHash: hashPassword('nexus2026') },
+  { id: 'usr-4', fullName: 'Director Sophia Thorne', email: 'super@easelabs.edu', role: 'super_admin', department: 'Campus Executive Directorate', studentOrStaffId: 'DIR-0001', passwordHash: hashPassword('nexus2026') }
 ];
 
 // Departments
@@ -196,11 +230,17 @@ apiRouter.patch('/labshare/items/:id/status', (req, res) => {
 });
 
 // Auth endpoints
+apiRouter.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
 apiRouter.post('/auth/login', (req, res) => {
-  const { email, role } = req.body;
-  const user = users.find(u => u.email.toLowerCase() === (email || '').toLowerCase());
+  const { email, password, role } = req.body ?? {};
+  const user = typeof email === 'string'
+    ? users.find(u => u.email.toLowerCase() === email.trim().toLowerCase())
+    : undefined;
   
-  if (!user) {
+  if (!user || typeof password !== 'string' || password.length > 128 || !verifyPassword(password, user.passwordHash)) {
     return res.status(401).json({ error: 'Invalid institutional email or password.' });
   }
 
@@ -208,35 +248,46 @@ apiRouter.post('/auth/login', (req, res) => {
     return res.status(403).json({ error: `Access denied. Account is registered as ${user.role}, not ${role}.` });
   }
 
-  res.json({ success: true, user: { ...user, token: 'easelabs-token-' + Date.now() } });
+  res.json({ success: true, user: publicUser(user) });
 });
 
 apiRouter.post('/auth/register', (req, res) => {
-  const { fullName, email, password, department, role, studentOrStaffId } = req.body;
+  const { fullName, email, password, department, role, studentOrStaffId } = req.body ?? {};
   
-  if (!fullName || !email || !password || !role) {
+  if (typeof fullName !== 'string' || !fullName.trim()
+    || typeof email !== 'string' || !email.trim()
+    || typeof password !== 'string') {
     return res.status(400).json({ error: 'All mandatory registration fields are required.' });
   }
 
-  const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (password.length < 8 || password.length > 128) {
+    return res.status(400).json({ error: 'Password must be between 8 and 128 characters.' });
+  }
+
+  if (!['student', 'faculty', 'lab_admin', 'super_admin'].includes(role)) {
+    return res.status(400).json({ error: 'Please select a valid account role.' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const existing = users.find(u => u.email.toLowerCase() === normalizedEmail);
   if (existing) {
     return res.status(400).json({ error: 'An account with this institutional email already exists.' });
   }
 
   const assignedRole = role === 'super_admin' ? 'student' : role;
 
-  const newUser = {
+  const newUser: UserAccount = {
     id: 'usr-' + (users.length + 1),
-    fullName,
-    email,
+    fullName: fullName.trim(),
+    email: normalizedEmail,
     role: assignedRole,
     department: department || 'Computer Science and Engineering',
     studentOrStaffId: studentOrStaffId || 'ID-' + Math.floor(1000 + Math.random() * 9000),
-    token: 'easelabs-token-' + Date.now()
+    passwordHash: hashPassword(password)
   };
 
   users.push(newUser);
-  res.json({ success: true, user: newUser });
+  res.json({ success: true, user: publicUser(newUser) });
 });
 
 // Departments & Labs endpoints
@@ -386,7 +437,7 @@ apiRouter.post('/ai-assistant', async (req, res) => {
   const { prompt } = req.body;
   if (!ai) {
     return res.json({ 
-      response: "easeLabs AI Assistant: Gemini API key is not configured in this environment. To enable real-time AI assistance on Vercel, please add GEMINI_API_KEY to your Vercel Project Environment Variables."
+      response: "easeLabs AI Assistant: Gemini API key is not configured in this environment. To enable real-time AI assistance, add GEMINI_API_KEY to your Netlify site environment variables."
     });
   }
 

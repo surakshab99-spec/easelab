@@ -3,6 +3,7 @@ import { User, Equipment, EquipmentBooking, Laboratory, MaintenanceRecord } from
 import { SplineBlob } from '../SplineBlob';
 import { Wrench, CheckCircle2, XCircle, AlertTriangle, Plus, LogOut, Cpu, Building2, Shield } from 'lucide-react';
 import { motion } from 'motion/react';
+import { apiFetch } from '../../services/api';
 
 interface LabAdminDashboardProps {
   user: User;
@@ -35,10 +36,10 @@ export const LabAdminDashboard: React.FC<LabAdminDashboardProps> = ({ user, onLo
 
   const loadData = () => {
     Promise.all([
-      fetch('/api/equipment').then(res => res.json()),
-      fetch('/api/bookings').then(res => res.json()),
-      fetch('/api/labs').then(res => res.json()),
-      fetch('/api/maintenance').then(res => res.json())
+      apiFetch('/api/equipment').then(res => res.json()),
+      apiFetch('/api/bookings').then(res => res.json()),
+      apiFetch('/api/labs').then(res => res.json()),
+      apiFetch('/api/maintenance').then(res => res.json())
     ]).then(([eqData, bkData, labData, mntData]) => {
       setEquipment(eqData);
       setBookings(bkData);
@@ -53,7 +54,7 @@ export const LabAdminDashboard: React.FC<LabAdminDashboardProps> = ({ user, onLo
 
   const handleBookingAction = async (id: string, status: 'approved' | 'rejected') => {
     try {
-      await fetch(`/api/bookings/${id}`, {
+      await apiFetch(`/api/bookings/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -68,7 +69,7 @@ export const LabAdminDashboard: React.FC<LabAdminDashboardProps> = ({ user, onLo
     e.preventDefault();
     const lab = labs.find(l => l.id === eqLabId);
     try {
-      const res = await fetch('/api/equipment', {
+      const res = await apiFetch('/api/equipment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -103,7 +104,7 @@ export const LabAdminDashboard: React.FC<LabAdminDashboardProps> = ({ user, onLo
       'dept-mech': 'Mechanical and Manufacturing Engineering'
     };
     try {
-      const res = await fetch('/api/labs', {
+      const res = await apiFetch('/api/labs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -131,7 +132,7 @@ export const LabAdminDashboard: React.FC<LabAdminDashboardProps> = ({ user, onLo
     const issue = prompt('Describe the maintenance issue or calibration required:');
     if (!issue) return;
     try {
-      await fetch('/api/maintenance', {
+      await apiFetch('/api/maintenance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ equipmentId: eqId, issue })
